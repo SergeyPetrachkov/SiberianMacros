@@ -52,7 +52,9 @@ public struct AutoMockable: PeerMacro {
 
         let mockClassDeclaration = ClassDeclarationGenerator.generate(
             className: mockClassName,
-            protocolName: protocolDeclaration.identifier
+            protocolName: protocolDeclaration.identifier,
+            variableDeclarations: variableDeclarations,
+            functionDeclarations: functionDeclarations
         )
         return [DeclSyntax(mockClassDeclaration)]
     }
