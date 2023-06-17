@@ -50,12 +50,22 @@ public struct AutoMockable: PeerMacro {
             .members
             .compactMap { $0.decl.as(FunctionDeclSyntax.self) }
 
-        let mockClassDeclaration = ClassDeclarationGenerator.generate(
+        let mockClassDeclaration = try ClassDeclarationGenerator.generate(
             className: mockClassName,
             protocolName: protocolDeclaration.identifier,
             variableDeclarations: variableDeclarations,
             functionDeclarations: functionDeclarations
         )
-        return [DeclSyntax(mockClassDeclaration)]
+
+        let ifConfigDeclaration = IfConfigDeclSyntax(
+            clauses: .init(
+                itemsBuilder: {
+                    IfConfigClauseListSyntax()
+                        .appending(.init(poundKeyword: .stringSegment("#if canImport(XCTest)")))
+                        .appending(.init(poundKeyword: .stringSegment(mockClassDeclaration.formatted().description)))
+                }
+            )
+        )
+        return [DeclSyntax(ifConfigDeclaration)]
     }
 }

@@ -8,6 +8,20 @@ let testMacros: [String: Macro.Type] = [
 ]
 
 final class SiberianMacrosTests: XCTestCase {
+    func testAutoMockable() {
+        assertMacroExpansion(
+            """
+            @AutoMockable
+            protocol SomeProtocol {
+                func someMethod()
+            }
+            """
+            , expandedSource: """
+            
+            """,
+            macros: ["AutoMockable": AutoMockable.self]
+        )
+    }
     func testMacroForClass() {
         assertMacroExpansion(
             """
