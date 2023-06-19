@@ -32,29 +32,22 @@ enum ClassDeclarationGenerator {
                     generator.generateCallsCountProperty()
                     generator.generateCalledProperty()
 
+                    if let receivedArgsProperty = generator.generateReceivedArgsIfNeeded() {
+                        receivedArgsProperty
+                    }
+
+                    if let receivedInvocationsProperty = generator.generateReceivedInvocationsIfNeeded() {
+                        receivedInvocationsProperty
+                    }
+
                     if let returnValueProperty = generator.generateReturnValuePropertyIfNeeded() {
                         returnValueProperty
                     }
 
                     generator.generateClosure()
+
+                    // TODO: generator.generateFunctionImplementation()
                 }
-
-//
-//                if !parameterList.isEmpty {
-//                    receivedArgumentsFactory.variableDeclaration(
-//                        variablePrefix: variablePrefix,
-//                        parameterList: parameterList
-//                    )
-//                    receivedInvocationsFactory.variableDeclaration(
-//                        variablePrefix: variablePrefix,
-//                        parameterList: parameterList
-//                    )
-//                }
-
-//                functionImplementationFactory.declaration(
-//                    variablePrefix: variablePrefix,
-//                    protocolFunctionDeclaration: functionDeclaration
-//                )
             }
         )
     }

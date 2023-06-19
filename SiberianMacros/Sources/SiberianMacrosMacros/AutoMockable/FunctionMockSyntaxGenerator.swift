@@ -100,8 +100,104 @@ struct FunctionMockSyntaxGenerator {
         if parametersList.isEmpty {
             return nil
         }
-        
-        return nil
+        // FIXME: make this work with `Int...` like args
+        let type: TypeSyntaxProtocol = {
+            let variableType: TypeSyntaxProtocol
+
+            if parametersList.count == 1, let onlyParameter = parametersList.first {
+                if onlyParameter.type.is(OptionalTypeSyntax.self) {
+                    variableType = onlyParameter.type
+                } else {
+                    variableType = OptionalTypeSyntax(wrappedType: onlyParameter.type, questionMark: .postfixQuestionMarkToken())
+                }
+            } else {
+                let tupleElements = TupleTypeElementListSyntax {
+                    for parameter in parametersList {
+                        TupleTypeElementSyntax(
+                            name: parameter.secondName ?? parameter.firstName,
+                            colon: .colonToken(),
+                            type: parameter.type
+                        )
+                    }
+                }
+                variableType = OptionalTypeSyntax(
+                    wrappedType: TupleTypeSyntax(elements: tupleElements),
+                    questionMark: .postfixQuestionMarkToken()
+                )
+            }
+
+            return variableType
+        }()
+
+        let identifier: TokenSyntax = {
+            if parametersList.count == 1, let onlyParameter = parametersList.first {
+                let parameterNameToken = onlyParameter.secondName ?? onlyParameter.firstName
+                let parameterNameText = parameterNameToken.text
+                let capitalizedParameterName = parameterNameText.capitalized
+
+                return .identifier(functionName + "Received" + capitalizedParameterName)
+            } else {
+                return .identifier(functionName + "ReceivedArguments")
+            }
+        }()
+
+        return VariableDeclSyntax(
+            bindingKeyword: .keyword(.var),
+            bindingsBuilder: {
+                PatternBindingSyntax(
+                    pattern: IdentifierPatternSyntax(identifier: identifier),
+                    typeAnnotation: TypeAnnotationSyntax(
+                        type: type
+                    )
+                )
+            }
+        )
+    }
+
+    func generateReceivedInvocationsIfNeeded() -> VariableDeclSyntax? {
+        let parametersList = funcDeclaration.signature.input.parameterList
+        if parametersList.isEmpty {
+            return nil
+        }
+
+        let identifier = TokenSyntax.identifier(functionName + "ReceivedInvocations")
+
+
+        let elementType: TypeSyntaxProtocol = {
+            let arrayElementType: TypeSyntaxProtocol
+
+            if parametersList.count == 1, let onlyParameter = parametersList.first {
+                arrayElementType = onlyParameter.type
+            } else {
+                let tupleElements = TupleTypeElementListSyntax {
+                    for parameter in parametersList {
+                        TupleTypeElementSyntax(
+                            name: parameter.secondName ?? parameter.firstName,
+                            colon: .colonToken(),
+                            type: parameter.type
+                        )
+                    }
+                }
+                arrayElementType = TupleTypeSyntax(elements: tupleElements)
+            }
+
+            return arrayElementType
+        }()
+
+        return VariableDeclSyntax(
+            bindingKeyword: .keyword(.var),
+            bindingsBuilder: {
+                PatternBindingSyntax(
+                    pattern: IdentifierPatternSyntax(identifier: identifier),
+                    typeAnnotation: TypeAnnotationSyntax(
+                        type: ArrayTypeSyntax(elementType: elementType)
+                    ),
+                    initializer: InitializerClauseSyntax(
+                        value: ArrayExprSyntax(elementsBuilder: {})
+                    )
+                )
+            }
+        )
     }
 
     func generateClosure() -> VariableDeclSyntax {
@@ -146,6 +242,10 @@ struct FunctionMockSyntaxGenerator {
                 )
             }
         )
+    }
+
+    func generateFunctionImplementation() -> FunctionDeclSyntax {
+        fatalError("Not implemented")
     }
 
     private static func expandedFuncName(funcDeclaration: FunctionDeclSyntax) -> String {
