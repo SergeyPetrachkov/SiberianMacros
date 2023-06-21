@@ -11,8 +11,9 @@ import SwiftSyntaxBuilder
 struct FunctionMockSyntaxGenerator {
 
     private let funcDeclaration: FunctionDeclSyntax
-    private let callsCountPropNameToken: TokenSyntax
     private let functionName: String
+
+    private let callsCountPropNameToken: TokenSyntax
 
     init(funcDeclaration: FunctionDeclSyntax) {
         self.funcDeclaration = funcDeclaration
@@ -101,45 +102,8 @@ struct FunctionMockSyntaxGenerator {
             return nil
         }
         // FIXME: make this work with `Int...` like args
-        let type: TypeSyntaxProtocol = {
-            let variableType: TypeSyntaxProtocol
-
-            if parametersList.count == 1, let onlyParameter = parametersList.first {
-                if onlyParameter.type.is(OptionalTypeSyntax.self) {
-                    variableType = onlyParameter.type
-                } else {
-                    variableType = OptionalTypeSyntax(wrappedType: onlyParameter.type, questionMark: .postfixQuestionMarkToken())
-                }
-            } else {
-                let tupleElements = TupleTypeElementListSyntax {
-                    for parameter in parametersList {
-                        TupleTypeElementSyntax(
-                            name: parameter.secondName ?? parameter.firstName,
-                            colon: .colonToken(),
-                            type: parameter.type
-                        )
-                    }
-                }
-                variableType = OptionalTypeSyntax(
-                    wrappedType: TupleTypeSyntax(elements: tupleElements),
-                    questionMark: .postfixQuestionMarkToken()
-                )
-            }
-
-            return variableType
-        }()
-
-        let identifier: TokenSyntax = {
-            if parametersList.count == 1, let onlyParameter = parametersList.first {
-                let parameterNameToken = onlyParameter.secondName ?? onlyParameter.firstName
-                let parameterNameText = parameterNameToken.text
-                let capitalizedParameterName = parameterNameText.capitalized
-
-                return .identifier(functionName + "Received" + capitalizedParameterName)
-            } else {
-                return .identifier(functionName + "ReceivedArguments")
-            }
-        }()
+        let type = Self.receivedArgsType(name: functionName, parametersList: parametersList)
+        let identifier = Self.receivedArgsIdentifier(name: functionName, parametersList: parametersList)
 
         return VariableDeclSyntax(
             bindingKeyword: .keyword(.var),
@@ -245,10 +209,184 @@ struct FunctionMockSyntaxGenerator {
     }
 
     func generateFunctionImplementation() -> FunctionDeclSyntax {
-        fatalError("Not implemented")
+        FunctionDeclSyntax(
+            attributes: funcDeclaration.attributes,
+            modifiers: funcDeclaration.modifiers,
+            funcKeyword: funcDeclaration.funcKeyword,
+            identifier: funcDeclaration.identifier,
+            genericParameterClause: funcDeclaration.genericParameterClause,
+            signature: funcDeclaration.signature,
+            genericWhereClause: funcDeclaration.genericWhereClause,
+            bodyBuilder: {
+                let parametersList = funcDeclaration.signature.input.parameterList
+
+                incrementVariableExpression(variablePrefix: functionName)
+
+                if !parametersList.isEmpty {
+                    let receivedArgsTypeIdentifier = Self.receivedArgsIdentifier(name: functionName, parametersList: parametersList)
+
+                    SequenceExprSyntax {
+                        IdentifierExprSyntax(identifier: receivedArgsTypeIdentifier)
+                        AssignmentExprSyntax()
+                        TupleExprSyntax {
+                            for parameter in parametersList {
+                                TupleExprElementSyntax(
+                                    expression: IdentifierExprSyntax(
+                                        identifier: parameter.secondName ?? parameter.firstName
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    appendValueToVariableExpression(variablePrefix: functionName, parametersList: parametersList)
+                }
+
+                if funcDeclaration.signature.output == nil {
+                    callExpression(
+                        variablePrefix: functionName,
+                        functionSignature: funcDeclaration.signature
+                    )
+                } else {
+                    IfExprSyntax(
+                        conditions: ConditionElementListSyntax {
+                            ConditionElementSyntax(
+                                condition: .expression(
+                                    ExprSyntax(
+                                        SequenceExprSyntax {
+                                            IdentifierExprSyntax(identifier: .identifier(functionName + "Closure"))
+                                            BinaryOperatorExprSyntax(operatorToken: .binaryOperator("!="))
+                                            NilLiteralExprSyntax()
+                                        }
+                                    )
+                                )
+                            )
+                        },
+                        elseKeyword: .keyword(.else),
+                        elseBody: .codeBlock(
+                            CodeBlockSyntax {
+                                ReturnStmtSyntax(
+                                    returnKeyword: .keyword(.return),
+                                    expression: IdentifierExprSyntax(
+                                        identifier: TokenSyntax.identifier("\(functionName)ReturnValue")
+                                    )
+                                )
+                            }
+                        ),
+                        bodyBuilder: {
+                            let returnExpression = {
+                                let calledExpression: ExprSyntaxProtocol
+
+                                if funcDeclaration.signature.output == nil {
+                                    calledExpression = OptionalChainingExprSyntax(
+                                        expression: IdentifierExprSyntax(
+                                            identifier: .identifier(functionName + "Closure")
+                                        )
+                                    )
+                                } else {
+                                    calledExpression = ForcedValueExprSyntax(
+                                        expression: IdentifierExprSyntax(
+                                            identifier: .identifier(functionName + "Closure")
+                                        )
+                                    )
+                                }
+
+                                var expression: ExprSyntaxProtocol = FunctionCallExprSyntax(
+                                    calledExpression: calledExpression,
+                                    leftParen: .leftParenToken(),
+                                    argumentList: TupleExprElementListSyntax {
+                                        for parameter in funcDeclaration.signature.input.parameterList {
+                                            TupleExprElementSyntax(
+                                                expression: IdentifierExprSyntax(
+                                                    identifier: parameter.secondName ?? parameter.firstName
+                                                )
+                                            )
+                                        }
+                                    },
+                                    rightParen: .rightParenToken()
+                                )
+
+                                if funcDeclaration.signature.effectSpecifiers?.asyncSpecifier != nil {
+                                    expression = AwaitExprSyntax(expression: expression)
+                                }
+
+                                if funcDeclaration.signature.effectSpecifiers?.throwsSpecifier != nil {
+                                    expression = TryExprSyntax(expression: expression)
+                                }
+
+                                return expression
+                            }()
+                            ReturnStmtSyntax(
+                                expression: returnExpression
+                            )
+                        }
+                    )
+                }
+            }
+        )
     }
 
-    private static func expandedFuncName(funcDeclaration: FunctionDeclSyntax) -> String {
+    func callExpression(variablePrefix: String, functionSignature: FunctionSignatureSyntax) -> ExprSyntaxProtocol {
+
+        func variableIdentifier(variablePrefix: String) -> TokenSyntax {
+            TokenSyntax.identifier(variablePrefix + "Closure")
+        }
+
+        let calledExpression: ExprSyntaxProtocol
+
+        if functionSignature.output == nil {
+            calledExpression = OptionalChainingExprSyntax(
+                expression: IdentifierExprSyntax(
+                    identifier: variableIdentifier(variablePrefix: variablePrefix)
+                )
+            )
+        } else {
+            calledExpression = ForcedValueExprSyntax(
+                expression: IdentifierExprSyntax(
+                    identifier: variableIdentifier(variablePrefix: variablePrefix)
+                )
+            )
+        }
+
+        var expression: ExprSyntaxProtocol = FunctionCallExprSyntax(
+            calledExpression: calledExpression,
+            leftParen: .leftParenToken(),
+            argumentList: TupleExprElementListSyntax {
+                for parameter in functionSignature.input.parameterList {
+                    TupleExprElementSyntax(
+                        expression: IdentifierExprSyntax(
+                            identifier: parameter.secondName ?? parameter.firstName
+                        )
+                    )
+                }
+            },
+            rightParen: .rightParenToken()
+        )
+
+        if functionSignature.effectSpecifiers?.asyncSpecifier != nil {
+            expression = AwaitExprSyntax(expression: expression)
+        }
+
+        if functionSignature.effectSpecifiers?.throwsSpecifier != nil {
+            expression = TryExprSyntax(expression: expression)
+        }
+
+        return expression
+    }
+
+    func incrementVariableExpression(variablePrefix: String) -> SequenceExprSyntax {
+        func variableIdentifier(variablePrefix: String) -> TokenSyntax {
+            TokenSyntax.identifier(variablePrefix + "CallsCount")
+        }
+
+        return SequenceExprSyntax {
+            IdentifierExprSyntax(identifier: variableIdentifier(variablePrefix: variablePrefix))
+            BinaryOperatorExprSyntax(operatorToken: .binaryOperator("+="))
+            IntegerLiteralExprSyntax(digits: .integerLiteral("1"))
+        }
+    }
+
+    static func expandedFuncName(funcDeclaration: FunctionDeclSyntax) -> String {
         var parts: [String] = [funcDeclaration.identifier.text]
 
         let parameterList = funcDeclaration.signature.input.parameterList
@@ -261,5 +399,85 @@ struct FunctionMockSyntaxGenerator {
         parts.append(contentsOf: parameters)
 
         return parts.joined()
+    }
+
+    static func receivedArgsType(name: String, parametersList: FunctionParameterListSyntax) -> TypeSyntaxProtocol {
+        let variableType: TypeSyntaxProtocol
+
+        if parametersList.count == 1, let onlyParameter = parametersList.first {
+            if onlyParameter.type.is(OptionalTypeSyntax.self) {
+                variableType = onlyParameter.type
+            } else {
+                variableType = OptionalTypeSyntax(wrappedType: onlyParameter.type, questionMark: .postfixQuestionMarkToken())
+            }
+        } else {
+            let tupleElements = TupleTypeElementListSyntax {
+                for parameter in parametersList {
+                    TupleTypeElementSyntax(
+                        name: parameter.secondName ?? parameter.firstName,
+                        colon: .colonToken(),
+                        type: parameter.type
+                    )
+                }
+            }
+            variableType = OptionalTypeSyntax(
+                wrappedType: TupleTypeSyntax(elements: tupleElements),
+                questionMark: .postfixQuestionMarkToken()
+            )
+        }
+
+        return variableType
+    }
+
+    private static func receivedArgsIdentifier(name: String, parametersList: FunctionParameterListSyntax) -> TokenSyntax {
+        if parametersList.count == 1, let onlyParameter = parametersList.first {
+            let parameterNameToken = onlyParameter.secondName ?? onlyParameter.firstName
+            let parameterNameText = parameterNameToken.text
+            let capitalizedParameterName = parameterNameText.prefix(1).uppercased() + parameterNameText.dropFirst()
+
+            return .identifier(name + "Received" + capitalizedParameterName)
+        } else {
+            return .identifier(name + "ReceivedArguments")
+        }
+    }
+
+
+    func appendValueToVariableExpression(variablePrefix: String, parametersList: FunctionParameterListSyntax) -> FunctionCallExprSyntax {
+        let identifier = Self.receivedInfocationsIdentifier(name: variablePrefix)
+        let calledExpression = MemberAccessExprSyntax(
+            base: IdentifierExprSyntax(identifier: identifier),
+            dot: .periodToken(),
+            name: .identifier("append")
+        )
+        let argument = appendArgumentExpression(parametersList: parametersList)
+
+        return FunctionCallExprSyntax(
+            calledExpression: calledExpression,
+            leftParen: .leftParenToken(),
+            argumentList: argument,
+            rightParen: .rightParenToken()
+        )
+    }
+
+    private func appendArgumentExpression(parametersList: FunctionParameterListSyntax) -> TupleExprElementListSyntax {
+        let tupleArgument = TupleExprSyntax(
+            elementListBuilder: {
+                for parameter in parametersList {
+                    TupleExprElementSyntax(
+                        expression: IdentifierExprSyntax(
+                            identifier: parameter.secondName ?? parameter.firstName
+                        )
+                    )
+                }
+            }
+        )
+
+        return TupleExprElementListSyntax {
+            TupleExprElementSyntax(expression: tupleArgument)
+        }
+    }
+
+    static func receivedInfocationsIdentifier(name: String) -> TokenSyntax {
+        TokenSyntax.identifier(name + "ReceivedInvocations")
     }
 }

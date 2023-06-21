@@ -46,7 +46,7 @@ enum ClassDeclarationGenerator {
 
                     generator.generateClosure()
 
-                    // TODO: generator.generateFunctionImplementation()
+                    generator.generateFunctionImplementation()
                 }
             }
         )
