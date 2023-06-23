@@ -13,6 +13,8 @@ final class SiberianMacrosTests: XCTestCase {
             """
             @AutoMockable
             protocol SomeProtocol {
+                var prop: (Int, Bool) { get set }
+                var anotherOptionalProp: Bool? { get set }
                 func someMethod()
             }
             """

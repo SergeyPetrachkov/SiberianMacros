@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  ClassDeclarationGenerator.swift
 //  
 //
 //  Created by Sergey Petrachkov on 15.06.2023.
@@ -24,7 +24,7 @@ enum ClassDeclarationGenerator {
             },
             memberBlockBuilder: {
                 for variableDeclaration in variableDeclarations {
-                    // generate props
+                    PropertyMockSyntaxGenerator(variableDecl: variableDeclaration).variablesDeclarations()
                 }
 
                 for functionDeclaration in functionDeclarations {

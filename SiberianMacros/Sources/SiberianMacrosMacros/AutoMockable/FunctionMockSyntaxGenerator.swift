@@ -23,18 +23,19 @@ struct FunctionMockSyntaxGenerator {
 
     func generateCallsCountProperty() -> VariableDeclSyntax {
         VariableDeclSyntax(
-                bindingKeyword: .keyword(.var),
-                bindingsBuilder: {
-                    PatternBindingSyntax(
-                        pattern: IdentifierPatternSyntax(
-                            identifier: callsCountPropNameToken
-                        ),
-                        initializer: InitializerClauseSyntax(
-                            value: IntegerLiteralExprSyntax(digits: .integerLiteral("0"))
-                        )
+            leadingTrivia: .newline,
+            bindingKeyword: .keyword(.var),
+            bindingsBuilder: {
+                PatternBindingSyntax(
+                    pattern: IdentifierPatternSyntax(
+                        identifier: callsCountPropNameToken
+                    ),
+                    initializer: InitializerClauseSyntax(
+                        value: IntegerLiteralExprSyntax(digits: .integerLiteral("0"))
                     )
-                }
-            )
+                )
+            }
+        )
     }
 
     func generateCalledProperty() -> VariableDeclSyntax {
@@ -322,7 +323,8 @@ struct FunctionMockSyntaxGenerator {
                         }
                     )
                 }
-            }
+            },
+            trailingTrivia: .newline
         )
     }
 
