@@ -61,7 +61,7 @@ public struct AutoMockable: PeerMacro {
             clauses: .init(
                 itemsBuilder: {
                     IfConfigClauseListSyntax()
-                        .appending(.init(poundKeyword: .stringSegment("#if TEST")))
+                        .appending(.init(poundKeyword: .stringSegment("#if canImport(XCTest)")))
                         .appending(.init(poundKeyword: .stringSegment(mockClassDeclaration.formatted().description)))
                 }
             )

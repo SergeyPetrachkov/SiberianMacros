@@ -43,7 +43,7 @@ struct PropertyMockSyntaxGenerator {
 
         let accessorElements: [AccessorListSyntax.Element] = accessors?.accessors.count == 2 // FIXME: not completely right
         ? ["get { \(raw: underlyingProperty) }", "set { \(raw: underlyingProperty) = newValue }"]
-        : ["get { \(raw: underlyingProperty) }"]
+        : ["get { \(raw: underlyingProperty) }", "set { \(raw: underlyingProperty) = newValue }"]//["get { \(raw: underlyingProperty) }"]
 
         return VariableDeclSyntax(
             bindingKeyword: .keyword(.var),

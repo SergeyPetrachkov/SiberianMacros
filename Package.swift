@@ -27,19 +27,22 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ]
+            ],
+            path: path(for: "SiberianMacrosMacros")
         ),
         
         // Library that exposes a macro as part of its API, which is used in client programs.
         .target(
             name: "SiberianMacros",
-            dependencies: ["SiberianMacrosMacros"]
+            dependencies: ["SiberianMacrosMacros"],
+            path: path(for: "SiberianMacros")
         ),
 
         // A client of the library, which is able to use the macro in its own code.
         .executableTarget(
             name: "SiberianMacrosClient",
-            dependencies: ["SiberianMacros"]
+            dependencies: ["SiberianMacros"],
+            path: path(for: "SiberianMacrosClient")
         ),
 
         // A test target used to develop the macro implementation.
@@ -52,3 +55,9 @@ let package = Package(
         ),
     ]
 )
+
+// MARK: - Private helpers
+
+func path(for target: String) -> String {
+    "Sources/\(target)"
+}
