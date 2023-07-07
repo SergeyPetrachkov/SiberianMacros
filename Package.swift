@@ -19,22 +19,22 @@ let package = Package(
     ],
     dependencies: [
         // Depend on the latest Swift 5.9 prerelease of SwiftSyntax
-        .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0-swift-5.9-DEVELOPMENT-SNAPSHOT-2023-04-25-b"),
+        .package(url: "https://github.com/apple/swift-syntax.git", branch: "swift-5.9-DEVELOPMENT-SNAPSHOT-2023-07-06-a"),
     ],
     targets: [
         .macro(
-            name: "SiberianMacrosMacros",
+            name: "MacrosImplementation",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ],
-            path: path(for: "SiberianMacrosMacros")
+            path: path(for: "MacrosImplementation")
         ),
         
         // Library that exposes a macro as part of its API, which is used in client programs.
         .target(
             name: "SiberianMacros",
-            dependencies: ["SiberianMacrosMacros"],
+            dependencies: ["MacrosImplementation"],
             path: path(for: "SiberianMacros")
         ),
 
@@ -49,7 +49,7 @@ let package = Package(
         .testTarget(
             name: "SiberianMacrosTests",
             dependencies: [
-                "SiberianMacrosMacros",
+                "MacrosImplementation",
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ]
         ),

@@ -396,7 +396,7 @@ struct FunctionMockSyntaxGenerator {
         let parameters = parameterList
             .map { $0.firstName.text }
             .filter { $0 != "_" }
-            .map { $0.capitalized }
+            .map { $0.firstLetterCapitalized }
 
         parts.append(contentsOf: parameters)
 
@@ -435,7 +435,7 @@ struct FunctionMockSyntaxGenerator {
         if parametersList.count == 1, let onlyParameter = parametersList.first {
             let parameterNameToken = onlyParameter.secondName ?? onlyParameter.firstName
             let parameterNameText = parameterNameToken.text
-            let capitalizedParameterName = parameterNameText.prefix(1).uppercased() + parameterNameText.dropFirst()
+            let capitalizedParameterName = parameterNameText.firstLetterCapitalized
 
             return .identifier(name + "Received" + capitalizedParameterName)
         } else {
